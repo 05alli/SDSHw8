@@ -1,0 +1,141 @@
+---
+title: "Hw8SDS"
+author: "Allison Nguyen"
+date: "2025-04-14"
+output: html_document
+---
+eid: ann2464
+
+github: https://github.com/05alli/SDSHw8
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(fig.height=5, fig.width=10, warning=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60)) 
+```
+
+
+```{r echo = FALSE, message = FALSE}
+#Downloading libraries
+library(ggplot2)
+library(kableExtra)
+library(tidyverse)
+library(tibble)
+library(mosaic)
+```
+
+```{r echo = FALSE, message = FALSE}
+#read csv
+creatinine <- read.csv("creatinine.csv")
+covid <- read.csv("covid.csv")
+milk <- read.csv("milk.csv")
+
+```
+# **Problem 1: regression warm up**
+```{r echo = FALSE, message = FALSE, results='hide'}
+
+head(creatinine)
+model <- lm(creatclear ~ age, data = creatinine)
+summary(model)
+new_age <- data.frame(age = 55)
+pred <- predict(model, newdata = new_age)
+pred
+```
+A) The expected creatinine clearance rate is 113.72 ml/min for a 55 year old. I calculated this by using a linear regression model,using the equation, B(0) + B(1) * age, to fit a linear regression model.
+```{r echo = FALSE, message = FALSE, results='hide'}
+slope <- coef(model)["age"]
+slope
+
+exp_40 <- predict(model, newdata = data.frame(age = 40))
+exp_60 <- predict(model, newdata = data.frame(age = 60))
+
+res_40 <- 135 - exp_40
+res_40
+
+res_60 <- 112 - exp_60
+res_60
+```
+
+B) The creatinie clearance rate decreases by 0.62 ml/min. I calculated this by finding the slope coefficent for the linear regression model.
+C) The 40 year olds are healthier than the 60 year olds for their age. I determined this by comparing the results of the 40 and 60 year olds which was found by subtracting the corresponding actual and expected values. 40 years old had a higher result meaning that they have better kidneys for their age.
+
+# **Problem 2: Modeling disease growth**
+
+```{r echo = FALSE, message=FALSE}
+#filtering countries
+italy <- filter(covid, country == "Italy", deaths > 0)
+spain <- filter(covid, country == "Spain", deaths >0)
+```
+
+```{r echo = FALSE, message = FALSE, results='hide'}
+#initial model for Italy
+italy_model <- lm(log(deaths) ~ days_since_first_death, data = italy)
+italy_gr <- coef(italy_model)[2]
+italy_dt <- log(2) / italy_gr
+round(italy_gr, 3)
+round(italy_dt, 1)
+
+#Boot Strapping Italy
+set.seed(123)
+italy_results <- do(1000) * {
+  resample_italy <- resample(italy)
+  mod <- lm(log(deaths) ~ days_since_first_death, data = resample_italy)
+  b <- coef(mod)[2]  
+  dt <- log(2) / b
+  data.frame(italy_gr = b, italy_dt = dt)
+}
+italy_growth <- confint(italy_results$italy_gr, level = 0.95)
+italy_double <- confint(italy_results$italy_dt, level = 0.95)
+round(italy_growth, 3)
+round(italy_double, 1)
+```
+
+
+```{r echo = FALSE, message = FALSE, results='hide'}
+#spain initial model
+spain_model <- lm(log(deaths) ~ days_since_first_death, data = spain)
+spain_gr <- coef(spain_model)[2]
+spain_dt <- log(2) / spain_gr
+round(spain_gr, 3)
+round(spain_dt, 1)
+
+#Boot Strapping SPain
+set.seed(123)
+spain_results <- do(1000) * {
+  resample_spain <- resample(spain)
+  mod_s <- lm(log(deaths) ~ days_since_first_death, data = resample_spain)
+  b_s <- coef(mod_s)[2]  
+  dt_s <- log(2) / b_s
+  data.frame(spain_gr = b_s, spain_dt = dt_s)
+}
+spain_growth <- confint(spain_results$spain_gr, level = 0.95)
+spain_double <- confint(spain_results$spain_dt, level = 0.95)
+round(spain_growth, 3)
+round(spain_double, 1)
+```
+
+1) Italy has a 95% confidence interval of 0.159 - 0.208 for estimated growth rate and a 95% confidence interval of 3.3 - 4.3 days for estimated doubling time.
+2) Spain has a 95% confidence interval of 0.236 - 0.319 for estimated growth rate and a 95% confidence interval of 2.2 - 2.9 days for estimated doubling time.
+
+```{r, echo=FALSE, message=FALSE}
+#Line Chart
+ggplot(data = covid, aes(x = days_since_first_death, y = deaths, color = country)) +
+  geom_line(size = 1) +
+  labs(title = "Daily Reported COVID-19 Deaths",x = "Days Since First Death",y = "Reported Deaths",color = "Country") + theme_minimal() + theme(text = element_text())+theme(plot.title = element_text(hjust = 0.5))
+```
+
+# **Problem 3: price elasticity of demand**
+
+```{r, echo=FALSE, message=FALSE}
+#Creating a milk model
+milk_model <- lm(log(sales) ~ log(price), data = milk)
+elasticity <- coef(model)[2]
+
+set.seed(123)
+boot_milk <- do(1000) * {
+  sample_data <- resample(milk)
+  model <- lm(log(sales) ~ log(price), data = sample_data)
+  data.frame(p = coef(model)[2])
+}
+confint(boot_milk$p, level = 0.95)
+```
+
+I used the power-law model Q = K x P^B and took the logarithm of both sides to turn it into a straight-line relationship. I ran 1,000 Monte Carlo simulations to estimate the slope of the line, which represents price elasticity. The results show that elasticity is between -1.76 and -1.45 with 95% confidence, meaning demand for milk is elastic.
