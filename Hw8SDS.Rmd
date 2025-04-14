@@ -5,7 +5,7 @@ date: "2025-04-14"
 output: html_document
 ---
 eid: ann2464
-github: 
+github: https://github.com/05alli/SDSHw8
 ```{r setup, include=FALSE, message=FALSE}
 knitr::opts_chunk$set(fig.height=5, fig.width=10, warning=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60)) 
 ```
